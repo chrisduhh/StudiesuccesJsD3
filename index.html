@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestapelde Staafdiagram per Lichting</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .bar {
+            stroke: #000;
+            stroke-width: 0.5;
+        }
+        .axis text {
+            font-size: 12px;
+        }
+        .axis path, .axis line {
+            fill: none;
+            shape-rendering: crispEdges;
+        }
+        #filter {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Gestapelde Staafdiagram per Lichting</h2>
+
+    <!-- Dropdown-menu voor het filteren van de lichting -->
+    <label for="lichting">Selecteer een lichting:</label>
+    <select id="filter"></select>
+
+    <div id="chart"></div>
+
+    <script>
+        // Breedte, hoogte en margins
+        const margin = { top: 20, right: 30, bottom: 40, left: 50 },
+              width = 1000 - margin.left - margin.right,
+              height = 500 - margin.top - margin.bottom;
+
+        // Maak een SVG-element
+        const svg = d3.select("#chart")
+                      .append("svg")
+                      .attr("width", width + margin.left + margin.right)
+                      .attr("height", height + margin.top + margin.bottom)
+                      .append("g")
+                      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        // Laad de CSV-data
+        d3.csv("data.csv").then(function(data) {
+            // Functie om resultaten te tellen
+            function countResults(data, vak) {
+                let counts = { v: 0, o: 0, nd: 0 };
+                data.forEach(d => {
+                    counts[d[vak]]++;
+                });
+                return counts;
+            }
+
+            // Maak een dropdown-menu met de unieke lichtingen
+            const lichtingen = [...new Set(data.map(d => d.Lichting))];
+            const dropdown = d3.select("#filter");
+
+            // Voeg opties toe aan het dropdown-menu
+            dropdown.selectAll("option")
+                    .data(lichtingen)
+                    .enter()
+                    .append("option")
+                    .attr("value", d => d)
+                    .text(d => d);
+
+            // Standaard filteren op de eerste lichting
+            let selectedLichting = lichtingen[0];
+            updateChart(selectedLichting);
+
+            // Update de grafiek wanneer een nieuwe lichting wordt geselecteerd
+            dropdown.on("change", function() {
+                selectedLichting = this.value;
+                updateChart(selectedLichting);
+            });
+
+            // Functie om de grafiek bij te werken
+            function updateChart(lichting) {
+                // Filter de data op de geselecteerde lichting
+                const filteredData = data.filter(d => d.Lichting === lichting);
+
+                // Vakken van blok 1 tot 4 die we willen weergeven, deze vakken zijn uit de dataset geimporteerd. 
+                const vakken = [
+                    "T1.1", "T1.2", "H1.1", "H1.2", "PG versl1", "PG pres1", "PG ind1",
+                    "T2.1", "T2.2", "H2.1", "H2.2", "PG versl2", "PG pres2", "PG ind2",
+                    "T3.1", "T3.2", "H3.1", "H3.2", "PG versl3", "PG pres3", "PG ind3",
+                    "T4.1", "T4.2", "H4.1", "H4.2", "PG versl4", "PG pres4", "PG ind4"
+                ];
+
+                // Bereken de resultaten voor elk vak
+                const resultData = vakken.map(vak => {
+                    const counts = countResults(filteredData, vak);
+                    return { vak, ...counts };
+                });
+
+                // Maak de x- en y-schalen
+                const x = d3.scaleBand()
+                            .domain(vakken)
+                            .range([0, width])
+                            .padding(0.2);
+
+                const y = d3.scaleLinear()
+                            .domain([0, d3.max(resultData, d => d.v + d.o + d.nd)])
+                            .range([height, 0]);
+
+                // Kleurenschaal voor de verschillende categorieën
+                const color = d3.scaleOrdinal()
+                                .domain(["v", "o", "nd"])
+                                .range(["green", "red", "gray"]);
+
+                // Stack de data
+                const stackedData = d3.stack()
+                                      .keys(["v", "o", "nd"])
+                                      (resultData);
+
+                // Verwijder oude elementen voordat de grafiek opnieuw getekend wordt
+                svg.selectAll(".layer").remove();
+                svg.selectAll(".x-axis").remove();
+                svg.selectAll(".y-axis").remove();
+
+                // X-as
+                svg.append("g")
+                   .attr("class", "x-axis")
+                   .attr("transform", `translate(0,${height})`)
+                   .call(d3.axisBottom(x).tickFormat(d => d.replace(/[T,H]/, '')));
+
+                // Y-as
+                svg.append("g")
+                   .attr("class", "y-axis")
+                   .call(d3.axisLeft(y));
+
+                // Maak de bars
+                svg.selectAll("g.layer")
+                   .data(stackedData)
+                   .enter().append("g")
+                   .attr("class", "layer")
+                   .attr("fill", d => color(d.key))
+                   .selectAll("rect")
+                   .data(d => d)
+                   .enter().append("rect")
+                   .attr("x", d => x(d.data.vak))
+                   .attr("y", d => y(d[1]))
+                   .attr("height", d => y(d[0]) - y(d[1]))
+                   .attr("width", x.bandwidth());
+            }
+        });
+    </script>
+</body>
+</html>
