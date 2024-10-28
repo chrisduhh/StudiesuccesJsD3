@@ -5,3 +5,5 @@ Vanuit de minor Data Visualisatie dienen we voor een opdrachtgever data inzichte
 Deze data dienen we visueel interactief in te zien per lichting. De cijfers hebben we van de dataset genormaliseerd naar Voldoende (V), Onvoldoende (O), en Niet Deelgenomen (ND) omgezet. (zie vergelijking hieronder)
 
 <img src="img/readme/datanormalisatie1.png" width="1000" alt="data normalisatie" />
+
+[Pages link naar deze repository](https://chrisduhh.github.io/StudiesuccesJsD3/)
