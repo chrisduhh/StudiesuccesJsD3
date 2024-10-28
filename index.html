@@ -20,7 +20,10 @@
             fill: none;
             shape-rendering: crispEdges;
         }
-        #filter {
+        #filter, #blockFilter, #viewOption {
+            margin-bottom: 20px;
+        }
+        #applyFilters {
             margin-bottom: 20px;
         }
     </style>
@@ -31,6 +34,27 @@
     <!-- Dropdown-menu voor het filteren van de lichting -->
     <label for="lichting">Selecteer een lichting:</label>
     <select id="filter"></select>
+
+    <!-- Dropdown-menu voor het filteren van de blokken -->
+    <label for="blockFilter">Selecteer een blok (of 'Totaal'):</label>
+    <select id="blockFilter"></select>
+
+    <!-- Filter opties voor tentamens, herkansingen, projectgroepen -->
+    <div>
+        <label><input type="checkbox" id="examFilter" checked> Tentamens (T)</label>
+        <label><input type="checkbox" id="resitFilter" checked> Herkansingen (H)</label>
+        <label><input type="checkbox" id="projectGroupFilter" checked> Projectgroep (PG)</label>
+    </div>
+
+    <!-- Toepassen knop voor filteren -->
+    <button id="applyFilters">Toepassen</button>
+
+    <!-- Dropdown voor weergave opties -->
+    <label for="viewOption">Selecteer weergave:</label>
+    <select id="viewOption">
+        <option value="simple">Eenvoudig</option>
+        <option value="detailed">Detail</option>
+    </select>
 
     <div id="chart"></div>
 
@@ -71,34 +95,82 @@
                     .attr("value", d => d)
                     .text(d => d);
 
-            // Standaard filteren op de eerste lichting
-            let selectedLichting = lichtingen[0];
-            updateChart(selectedLichting);
+            // Definieer de vakken per blok
+            const blokken = {
+                "Blok 1": ["T1.1", "T1.2", "H1.1", "H1.2", "PG versl1", "PG pres1", "PG ind1"],
+                "Blok 2": ["T2.1", "T2.2", "H2.1", "H2.2", "PG versl2", "PG pres2", "PG ind2"],
+                "Blok 3": ["T3.1", "T3.2", "H3.1", "H3.2", "PG versl3", "PG pres3", "PG ind3"],
+                "Blok 4": ["T4.1", "T4.2", "H4.1", "H4.2", "PG versl4", "PG pres4", "PG ind4"]
+            };
 
-            // Update de grafiek wanneer een nieuwe lichting wordt geselecteerd
+            // Maak een dropdown-menu voor de blokken inclusief totaal
+            const blockDropdown = d3.select("#blockFilter");
+            blockDropdown.append("option").attr("value", "Totaal").text("Totaal"); // Voeg de totaaloptie toe
+            blockDropdown.selectAll("option.block")
+                         .data(Object.keys(blokken))
+                         .enter()
+                         .append("option")
+                         .attr("class", "block")
+                         .attr("value", d => d)
+                         .text(d => d);
+
+            // Standaard filteren op de eerste lichting en het totaal
+            let selectedLichting = lichtingen[0];
+            let selectedBlock = "Totaal"; // Standaard geselecteerd blok is 'Totaal'
+            let selectedView = "simple"; // Standaard weergave is eenvoudig
+            updateChart(selectedLichting, selectedBlock, selectedView);
+
+            // Event listeners voor dropdowns
             dropdown.on("change", function() {
                 selectedLichting = this.value;
-                updateChart(selectedLichting);
+                updateChart(selectedLichting, selectedBlock, selectedView);
+            });
+
+            blockDropdown.on("change", function() {
+                selectedBlock = this.value;
+                updateChart(selectedLichting, selectedBlock, selectedView);
+            });
+
+            // Update de grafiek wanneer de 'Toepassen' knop wordt ingedrukt
+            d3.select("#applyFilters").on("click", function() {
+                updateChart(selectedLichting, selectedBlock, selectedView);
             });
 
             // Functie om de grafiek bij te werken
-            function updateChart(lichting) {
+            function updateChart(lichting, block, view) {
                 // Filter de data op de geselecteerde lichting
                 const filteredData = data.filter(d => d.Lichting === lichting);
 
-                // Vakken van blok 1 tot 4 die we willen weergeven, deze vakken zijn uit de dataset geimporteerd. 
-                const vakken = [
-                    "T1.1", "T1.2", "H1.1", "H1.2", "PG versl1", "PG pres1", "PG ind1",
-                    "T2.1", "T2.2", "H2.1", "H2.2", "PG versl2", "PG pres2", "PG ind2",
-                    "T3.1", "T3.2", "H3.1", "H3.2", "PG versl3", "PG pres3", "PG ind3",
-                    "T4.1", "T4.2", "H4.1", "H4.2", "PG versl4", "PG pres4", "PG ind4"
-                ];
+                let vakken;
+                if (block === "Totaal") {
+                    // Gebruik alle vakken als totaal
+                    vakken = [].concat(...Object.values(blokken));
+                } else {
+                    // Haal de vakken op voor het geselecteerde blok
+                    vakken = blokken[block];
+                }
+
+                // Filter de vakken op basis van de geselecteerde categorieën
+                const examChecked = d3.select("#examFilter").property("checked");
+                const resitChecked = d3.select("#resitFilter").property("checked");
+                const projectGroupChecked = d3.select("#projectGroupFilter").property("checked");
+
+                // Voeg vakken toe op basis van de checkboxes
+                vakken = vakken.filter(vak => {
+                    if (examChecked && vak.startsWith("T")) return true;
+                    if (resitChecked && vak.startsWith("H")) return true;
+                    if (projectGroupChecked && vak.startsWith("PG")) return true;
+                    return false; // Niet opnemen als geen checkbox is aangevinkt
+                });
 
                 // Bereken de resultaten voor elk vak
                 const resultData = vakken.map(vak => {
                     const counts = countResults(filteredData, vak);
                     return { vak, ...counts };
                 });
+
+                // Bereken de maximale waarde voor de y-as
+                const maxTotal = d3.max(resultData, d => d.v + d.o + d.nd);
 
                 // Maak de x- en y-schalen
                 const x = d3.scaleBand()
@@ -107,8 +179,31 @@
                             .padding(0.2);
 
                 const y = d3.scaleLinear()
-                            .domain([0, d3.max(resultData, d => d.v + d.o + d.nd)])
+                            .domain([0, maxTotal])
                             .range([height, 0]);
+
+                // Verwijder oude elementen voordat de grafiek opnieuw getekend wordt
+                svg.selectAll(".layer").remove();
+                svg.selectAll(".x-axis").remove();
+                svg.selectAll(".y-axis").remove();
+
+                // X-as met aangepaste ticks
+                const xAxis = svg.append("g")
+                                 .attr("class", "x-axis")
+                                 .attr("transform", `translate(0,${height})`)
+                                 .call(d3.axisBottom(x));
+
+                // Y-as met aangepaste ticks
+                const yAxis = svg.append("g")
+                                 .attr("class", "y-axis")
+                                 .call(d3.axisLeft(y));
+
+                // Voeg de maximale totaalwaarde toe als een extra tick op de y-as
+                const ticks = y.ticks(); // huidige ticks
+                if (!ticks.includes(maxTotal)) {
+                    ticks.push(maxTotal); // voeg maxTotal toe als het nog niet aanwezig is
+                }
+                yAxis.call(d3.axisLeft(y).ticks(ticks.length).tickValues(ticks));
 
                 // Kleurenschaal voor de verschillende categorieën
                 const color = d3.scaleOrdinal()
@@ -120,35 +215,36 @@
                                       .keys(["v", "o", "nd"])
                                       (resultData);
 
-                // Verwijder oude elementen voordat de grafiek opnieuw getekend wordt
-                svg.selectAll(".layer").remove();
-                svg.selectAll(".x-axis").remove();
-                svg.selectAll(".y-axis").remove();
-
-                // X-as
-                svg.append("g")
-                   .attr("class", "x-axis")
-                   .attr("transform", `translate(0,${height})`)
-                   .call(d3.axisBottom(x).tickFormat(d => d.replace(/[T,H]/, '')));
-
-                // Y-as
-                svg.append("g")
-                   .attr("class", "y-axis")
-                   .call(d3.axisLeft(y));
-
                 // Maak de bars
-                svg.selectAll("g.layer")
+                const layers = svg.selectAll("g.layer")
                    .data(stackedData)
                    .enter().append("g")
                    .attr("class", "layer")
-                   .attr("fill", d => color(d.key))
-                   .selectAll("rect")
+                   .attr("fill", d => color(d.key));
+
+                // Voeg de staven toe afhankelijk van de weergave
+                layers.selectAll("rect")
                    .data(d => d)
                    .enter().append("rect")
                    .attr("x", d => x(d.data.vak))
                    .attr("y", d => y(d[1]))
                    .attr("height", d => y(d[0]) - y(d[1]))
-                   .attr("width", x.bandwidth());
+                   .attr("width", x.bandwidth())
+                   .attr("opacity", view === "simple" ? 0.8 : 1);
+
+                // In detailweergave, voeg labels toe voor de waarden boven de staven
+                if (view === "detailed") {
+                    layers.selectAll("text")
+                        .data(d => d)
+                        .enter().append("text")
+                        .attr("x", d => x(d.data.vak) + x.bandwidth() / 2)
+                        .attr("y", d => y(d[1]) - 5)
+                        .attr("text-anchor", "middle")
+                        .text(d => d[1] - d[0]);
+                }
+
+                // Update de geselecteerde weergave
+                selectedView = d3.select("#viewOption").property("value");
             }
         });
     </script>
