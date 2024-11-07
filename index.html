@@ -3,41 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestapelde Staafdiagram per Lichting</title>
+    <title>Project Studiesucces?!: Vergelijken van Studieresultaten bij Lichtingen van Studenten</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
+            text-align: center;
+            color:white;
+            margin: 0;
+            background-image: url('img/chalkboard.jpg'); 
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
         }
-        .bar {
-            stroke: #000;
-            stroke-width: 0.5;
+
+        /* De grafieken hebben de achtergrond van het boek */
+        .chart-container-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            z-index: 1;
+            background-image: url('img/book.png');
+            background-size: 100% 100%;
+            background-position: center;
+            background-repeat: no-repeat;
+            height: 100%; /* De hoogte van de container voor de grafieken */
+            width: 90%; /* Hoogte van de afbeelding */
+            margin: 25px auto;
         }
-        .axis text {
+
+        /* Containers voor de grafieken */
+        .chart-container {
+            color:black;
+            width: 45%; 
+            height: 100%;
+            position: relative;
+            margin-bottom: 5%;
+        }
+
+        /* Titel van de grafieken */
+        .chart-title {
+            font-size: 18px;
+            margin-top: 5%;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        /* Legenda styling */
+        .legend {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            z-index: 2;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+        }
+
+        .legend-text {
             font-size: 12px;
         }
-        .axis path, .axis line {
-            fill: none;
-            shape-rendering: crispEdges;
+
+        h2 {
+            margin-top: 25px;
+            margin-bottom: 25px;
+            font-size: 24px;
+            font-weight: bold;
         }
-        #filter, #blockFilter, #viewOption {
-            margin-bottom: 20px;
-        }
-        #applyFilters {
-            margin-bottom: 20px;
-        }
+
     </style>
 </head>
 <body>
-    <h2>Gestapelde Staafdiagram per Lichting</h2>
+    <!-- De tekst bovenaan de pagina is buiten de grafieken -->
+    <h2>Project Studiesucces?!: Vergelijken van Studieresultaten bij Lichtingen van Studenten</h2>
 
-    <!-- Dropdown-menu voor het filteren van de lichting -->
-    <label for="lichting">Selecteer een lichting:</label>
+    <!-- Dropdowns voor het selecteren van de lichtingen en blokken selectie -->
+    <label for="lichting">Selecteer eerste lichting:</label>
     <select id="filter"></select>
 
-    <!-- Dropdown-menu voor het filteren van de blokken -->
-    <label for="blockFilter">Selecteer een blok (of 'Totaal'):</label>
+    <label for="lichting2">Selecteer tweede lichting:</label>
+    <select id="filter2"></select>
+
+    <label for="blockFilter">Selecteer eerste blok (of 'Totaal'):</label>
     <select id="blockFilter"></select>
+
+    <label for="blockFilter2">Selecteer tweede blok (of 'Totaal'):</label>
+    <select id="blockFilter2"></select>
 
     <!-- Filter opties voor tentamens, herkansingen, projectgroepen -->
     <div>
@@ -46,26 +111,59 @@
         <label><input type="checkbox" id="projectGroupFilter" checked> Projectgroep (PG)</label>
     </div>
 
-    <!-- Toepassen knop voor filteren -->
+    <!-- Toepassen knop -->
     <button id="applyFilters">Toepassen</button>
 
-    <!-- Dropdown voor weergave opties -->
+    <!-- Weergave opties -->
     <label for="viewOption">Selecteer weergave:</label>
     <select id="viewOption">
         <option value="simple">Eenvoudig</option>
         <option value="detailed">Detail</option>
     </select>
 
-    <div id="chart"></div>
+    <!-- legenda -->
+    <div class="legend" id="legend">
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: green;"></div>
+            <div class="legend-text">v</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: orange;"></div>
+            <div class="legend-text">o</div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color" style="background-color: red;"></div>
+            <div class="legend-text">nd</div>
+        </div>
+    </div>
+
+    <!-- Containers voor de twee grafieken met titels erboven -->
+    <div class="chart-container-wrapper">
+        <div class="chart-container">
+            <div id="chartTitle1" class="chart-title"></div>
+            <div id="chart1"></div>
+        </div>
+        <div class="chart-container">
+            <div id="chartTitle2" class="chart-title"></div>
+            <div id="chart2"></div>
+        </div>
+    </div>
 
     <script>
-        // Breedte, hoogte en margins
+        // Breedte, hoogte en margins van de grafieken
         const margin = { top: 20, right: 30, bottom: 40, left: 50 },
-              width = 1000 - margin.left - margin.right,
-              height = 500 - margin.top - margin.bottom;
+              width = 800 - margin.left - margin.right,
+              height = 600 - margin.top - margin.bottom;
 
-        // Maak een SVG-element
-        const svg = d3.select("#chart")
+        // Maak SVG-elementen voor beide grafieken
+        const svg1 = d3.select("#chart1")
+                      .append("svg")
+                      .attr("width", width + margin.left + margin.right)
+                      .attr("height", height + margin.top + margin.bottom)
+                      .append("g")
+                      .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        const svg2 = d3.select("#chart2")
                       .append("svg")
                       .attr("width", width + margin.left + margin.right)
                       .attr("height", height + margin.top + margin.bottom)
@@ -74,38 +172,31 @@
 
         // Laad de CSV-data
         d3.csv("data.csv").then(function(data) {
-            // Functie om resultaten te tellen
-            function countResults(data, vak) {
-                let counts = { v: 0, o: 0, nd: 0 };
-                data.forEach(d => {
-                    counts[d[vak]]++;
-                });
-                return counts;
-            }
-
-            // Maak een dropdown-menu met de unieke lichtingen
             const lichtingen = [...new Set(data.map(d => d.Lichting))];
-            const dropdown = d3.select("#filter");
+            
+            // Populeer de dropdowns voor beide lichtingen
+            d3.select("#filter").selectAll("option")
+                .data(lichtingen)
+                .enter().append("option")
+                .attr("value", d => d)
+                .text(d => d);
 
-            // Voeg opties toe aan het dropdown-menu
-            dropdown.selectAll("option")
-                    .data(lichtingen)
-                    .enter()
-                    .append("option")
-                    .attr("value", d => d)
-                    .text(d => d);
+            d3.select("#filter2").selectAll("option")
+                .data(lichtingen)
+                .enter().append("option")
+                .attr("value", d => d)
+                .text(d => d);
 
-            // Definieer de vakken per blok
             const blokken = {
-                "Blok 1": ["T1.1", "T1.2", "H1.1", "H1.2", "PG versl1", "PG pres1", "PG ind1"],
-                "Blok 2": ["T2.1", "T2.2", "H2.1", "H2.2", "PG versl2", "PG pres2", "PG ind2"],
-                "Blok 3": ["T3.1", "T3.2", "H3.1", "H3.2", "PG versl3", "PG pres3", "PG ind3"],
-                "Blok 4": ["T4.1", "T4.2", "H4.1", "H4.2", "PG versl4", "PG pres4", "PG ind4"]
+                "Blok 1": ["T1.1", "H1.1", "T1.2", "H1.2", "PG versl1", "PG pres1", "PG ind1"],
+                "Blok 2": ["T2.1", "H2.1", "T2.2", "H2.2", "PG versl2", "PG pres2", "PG ind2"],
+                "Blok 3": ["T3.1", "H3.1", "T3.2", "H3.2", "PG versl3", "PG pres3", "PG ind3"],
+                "Blok 4": ["T4.1", "H4.1", "T4.2", "H4.2", "PG versl4", "PG pres4", "PG ind4"]
             };
 
-            // Maak een dropdown-menu voor de blokken inclusief totaal
+            // Populeer de dropdowns voor beide blokken
             const blockDropdown = d3.select("#blockFilter");
-            blockDropdown.append("option").attr("value", "Totaal").text("Totaal"); // Voeg de totaaloptie toe
+            blockDropdown.append("option").attr("value", "Totaal").text("Totaal");
             blockDropdown.selectAll("option.block")
                          .data(Object.keys(blokken))
                          .enter()
@@ -114,138 +205,118 @@
                          .attr("value", d => d)
                          .text(d => d);
 
-            // Standaard filteren op de eerste lichting en het totaal
-            let selectedLichting = lichtingen[0];
-            let selectedBlock = "Totaal"; // Standaard geselecteerd blok is 'Totaal'
-            let selectedView = "simple"; // Standaard weergave is eenvoudig
-            updateChart(selectedLichting, selectedBlock, selectedView);
+            const blockDropdown2 = d3.select("#blockFilter2");
+            blockDropdown2.append("option").attr("value", "Totaal").text("Totaal");
+            blockDropdown2.selectAll("option.block")
+                         .data(Object.keys(blokken))
+                         .enter()
+                         .append("option")
+                         .attr("class", "block")
+                         .attr("value", d => d)
+                         .text(d => d);
 
-            // Event listeners voor dropdowns
-            dropdown.on("change", function() {
-                selectedLichting = this.value;
-                updateChart(selectedLichting, selectedBlock, selectedView);
+            let selectedLichting1 = lichtingen[0];
+            let selectedLichting2 = lichtingen[0];
+            let selectedBlock1 = "Totaal";
+            let selectedBlock2 = "Totaal";
+            let selectedView = "simple";
+
+            function updateCharts() {
+                updateChart(svg1, selectedLichting1, selectedBlock1, selectedView);
+                updateChart(svg2, selectedLichting2, selectedBlock2, selectedView);
+                updateChartTitles();
+            }
+
+            function updateChartTitles() {
+                // Update de titels van de grafieken boven de grafieken
+                d3.select("#chartTitle1").text(`Lichting: ${selectedLichting1}, Selectie: ${selectedBlock1}`);
+                d3.select("#chartTitle2").text(`Lichting: ${selectedLichting2}, Selectie: ${selectedBlock2}`);
+            }
+
+            d3.select("#filter").on("change", function() {
+                selectedLichting1 = this.value;
+                updateCharts();
             });
 
-            blockDropdown.on("change", function() {
-                selectedBlock = this.value;
-                updateChart(selectedLichting, selectedBlock, selectedView);
+            d3.select("#filter2").on("change", function() {
+                selectedLichting2 = this.value;
+                updateCharts();
             });
 
-            // Update de grafiek wanneer de 'Toepassen' knop wordt ingedrukt
-            d3.select("#applyFilters").on("click", function() {
-                updateChart(selectedLichting, selectedBlock, selectedView);
+            d3.select("#blockFilter").on("change", function() {
+                selectedBlock1 = this.value;
+                updateCharts();
             });
 
-            // Functie om de grafiek bij te werken
-            function updateChart(lichting, block, view) {
-                // Filter de data op de geselecteerde lichting
+            d3.select("#blockFilter2").on("change", function() {
+                selectedBlock2 = this.value;
+                updateCharts();
+            });
+
+            d3.select("#applyFilters").on("click", updateCharts);
+
+            function updateChart(svg, lichting, block, view) {
                 const filteredData = data.filter(d => d.Lichting === lichting);
 
-                let vakken;
-                if (block === "Totaal") {
-                    // Gebruik alle vakken als totaal
-                    vakken = [].concat(...Object.values(blokken));
-                } else {
-                    // Haal de vakken op voor het geselecteerde blok
-                    vakken = blokken[block];
-                }
+                let vakken = block === "Totaal" ? [].concat(...Object.values(blokken)) : blokken[block];
 
-                // Filter de vakken op basis van de geselecteerde categorieën
                 const examChecked = d3.select("#examFilter").property("checked");
                 const resitChecked = d3.select("#resitFilter").property("checked");
                 const projectGroupChecked = d3.select("#projectGroupFilter").property("checked");
 
-                // Voeg vakken toe op basis van de checkboxes
-                vakken = vakken.filter(vak => {
-                    if (examChecked && vak.startsWith("T")) return true;
-                    if (resitChecked && vak.startsWith("H")) return true;
-                    if (projectGroupChecked && vak.startsWith("PG")) return true;
-                    return false; // Niet opnemen als geen checkbox is aangevinkt
-                });
+                vakken = vakken.filter(vak => 
+                    (examChecked && vak.startsWith("T")) || 
+                    (resitChecked && vak.startsWith("H")) || 
+                    (projectGroupChecked && vak.startsWith("PG"))
+                );
 
-                // Bereken de resultaten voor elk vak
                 const resultData = vakken.map(vak => {
-                    const counts = countResults(filteredData, vak);
+                    const counts = { v: 0, o: 0, nd: 0 };
+                    filteredData.forEach(d => counts[d[vak]]++);
                     return { vak, ...counts };
                 });
 
-                // Bereken de maximale waarde voor de y-as
                 const maxTotal = d3.max(resultData, d => d.v + d.o + d.nd);
+                const x = d3.scaleBand().domain(vakken).range([0, width]).padding(0.2);
+                const y = d3.scaleLinear().domain([0, maxTotal]).range([height, 0]);
 
-                // Maak de x- en y-schalen
-                const x = d3.scaleBand()
-                            .domain(vakken)
-                            .range([0, width])
-                            .padding(0.2);
-
-                const y = d3.scaleLinear()
-                            .domain([0, maxTotal])
-                            .range([height, 0]);
-
-                // Verwijder oude elementen voordat de grafiek opnieuw getekend wordt
                 svg.selectAll(".layer").remove();
                 svg.selectAll(".x-axis").remove();
                 svg.selectAll(".y-axis").remove();
 
-                // X-as met aangepaste ticks
-                const xAxis = svg.append("g")
-                                 .attr("class", "x-axis")
-                                 .attr("transform", `translate(0,${height})`)
-                                 .call(d3.axisBottom(x));
+                svg.append("g").attr("class", "x-axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(x))
+                    .selectAll("text")
+                    .style("text-anchor", "start")
+                    .attr("transform", "rotate(90) translate(10, -15)")
+                    .style("font-size", "12px");
+                svg.append("g")
+                    .attr("class", "y-axis")
+                    .call(d3.axisLeft(y).ticks(maxTotal).tickValues(y.ticks(6).filter(Number.isInteger).concat([maxTotal])))
+                    .append("text")
+                    .attr("x", -10)
+                    .attr("y", -10)
+                    .attr("dy", ".71em")
+                    .attr("text-anchor", "middle")
+                    .style("font-size", "12px")
+                    .text(maxTotal); // Voegt de maximale waarde bovenaan de as toe
 
-                // Y-as met aangepaste ticks
-                const yAxis = svg.append("g")
-                                 .attr("class", "y-axis")
-                                 .call(d3.axisLeft(y));
+                const color = d3.scaleOrdinal().domain(["v", "o", "nd"]).range(["green", "orange", "red"]);
+                const stackedData = d3.stack().keys(["v", "o", "nd"])(resultData);
 
-                // Voeg de maximale totaalwaarde toe als een extra tick op de y-as
-                const ticks = y.ticks(); // huidige ticks
-                if (!ticks.includes(maxTotal)) {
-                    ticks.push(maxTotal); // voeg maxTotal toe als het nog niet aanwezig is
-                }
-                yAxis.call(d3.axisLeft(y).ticks(ticks.length).tickValues(ticks));
+                const layers = svg.selectAll(".layer").data(stackedData).enter().append("g").attr("class", "layer").style("fill", d => color(d.key));
+                layers.selectAll("rect").data(d => d).enter().append("rect").attr("x", d => x(d.data.vak)).attr("y", d => y(d[1])).attr("height", d => y(d[0]) - y(d[1])).attr("width", x.bandwidth());
 
-                // Kleurenschaal voor de verschillende categorieën
-                const color = d3.scaleOrdinal()
-                                .domain(["v", "o", "nd"])
-                                .range(["green", "red", "gray"]);
-
-                // Stack de data
-                const stackedData = d3.stack()
-                                      .keys(["v", "o", "nd"])
-                                      (resultData);
-
-                // Maak de bars
-                const layers = svg.selectAll("g.layer")
-                   .data(stackedData)
-                   .enter().append("g")
-                   .attr("class", "layer")
-                   .attr("fill", d => color(d.key));
-
-                // Voeg de staven toe afhankelijk van de weergave
-                layers.selectAll("rect")
-                   .data(d => d)
-                   .enter().append("rect")
-                   .attr("x", d => x(d.data.vak))
-                   .attr("y", d => y(d[1]))
-                   .attr("height", d => y(d[0]) - y(d[1]))
-                   .attr("width", x.bandwidth())
-                   .attr("opacity", view === "simple" ? 0.8 : 1);
-
-                // In detailweergave, voeg labels toe voor de waarden boven de staven
                 if (view === "detailed") {
-                    layers.selectAll("text")
-                        .data(d => d)
-                        .enter().append("text")
-                        .attr("x", d => x(d.data.vak) + x.bandwidth() / 2)
-                        .attr("y", d => y(d[1]) - 5)
-                        .attr("text-anchor", "middle")
-                        .text(d => d[1] - d[0]);
+                    layers.selectAll("text").data(d => d).enter().append("text")
+                          .attr("x", d => x(d.data.vak) + x.bandwidth() / 2)
+                          .attr("y", d => y(d[1]) - 5)
+                          .attr("text-anchor", "middle")
+                          .style("font-size", "10px")
+                          .text(d => d[1] - d[0]);
                 }
-
-                // Update de geselecteerde weergave
-                selectedView = d3.select("#viewOption").property("value");
             }
+
+            updateCharts();
         });
     </script>
 </body>
