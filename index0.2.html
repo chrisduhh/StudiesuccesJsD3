@@ -9,13 +9,12 @@
         body {
             font-family: Arial, sans-serif;
             text-align: center;
-            color: white;
+            color:white;
             margin: 0;
-            background-image: url('img/chalkboard.jpg');
+            background-image: url('img/chalkboard.jpg'); 
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
-            font-size: 16px;
         }
 
         .chart-container-wrapper {
@@ -29,13 +28,15 @@
             background-size: 100% 100%;
             background-position: center;
             background-repeat: no-repeat;
-            width: 90%;
+            height: 100%; /* De hoogte van de container voor de grafieken */
+            width: 90%; /* Hoogte van de afbeelding */
             margin: 25px auto;
         }
 
         .chart-container {
-            color: black;
-            width: 45%;
+            color:black;
+            width: 45%; 
+            height: 100%;
             position: relative;
             margin-bottom: 5%;
         }
@@ -80,51 +81,12 @@
             font-weight: bold;
         }
 
-        /* Mobiele versie (schermen smaller dan 768px) */
-        @media (max-width: 768px) {
-            body {
-                font-size: 14px;
-                width: 768px; 
-                margin-left: 25px auto;
-            }
-
-            h2 {
-                font-size: 20px;
-                margin: 20px 10px;
-            }
-
-            .chart-container-wrapper {
-                flex-direction: column;
-                background-image: none;
-                width: 768px;
-                padding: 10px;
-                margin: 0% auto;
-            }
-
-            .chart-container {
-                color: white;
-                width: 100%;
-                margin-bottom: 15px;
-                margin: 0% auto;
-            }
-
-            .chart-title {
-                font-size: 16px;
-            }
-
-            .legend {
-                position: fixed;
-                float: none;
-                font-size: 10px;
-            }
-        }
-
     </style>
 </head>
 <body>
     <h2>Project Studiesucces?!: Vergelijken van Studieresultaten bij Lichtingen van Studenten</h2>
 
-    <!-- Dropdowns en filters voor lichting en blokken -->
+    <!-- Dropdowns voor het selecteren van de lichtingen en blokken selectie per chart -->
     <label for="lichting">Selecteer eerste lichting:</label>
     <select id="filter"></select>
 
@@ -137,15 +99,17 @@
     <label for="blockFilter2">Selecteer tweede blok (of 'Totaal'):</label>
     <select id="blockFilter2"></select>
 
-    <!-- Filters -->
+    <!-- Filter opties voor tentamens, herkansingen, projectgroepen -->
     <div>
         <label><input type="checkbox" id="examFilter" checked> Tentamens (T)</label>
         <label><input type="checkbox" id="resitFilter" checked> Herkansingen (H)</label>
         <label><input type="checkbox" id="projectGroupFilter" checked> Projectgroep (PG)</label>
     </div>
 
+    <!-- Toepassen knop -->
     <button id="applyFilters">Toepassen</button>
 
+    <!-- Weergave opties -->
     <label for="viewOption">Selecteer weergave:</label>
     <select id="viewOption">
         <option value="simple">Eenvoudig</option>
@@ -168,6 +132,7 @@
         </div>
     </div>
 
+    <!-- Containers voor de twee grafieken met titels erboven -->
     <div class="chart-container-wrapper">
         <div class="chart-container">
             <div id="chartTitle1" class="chart-title"></div>
